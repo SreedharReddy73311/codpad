@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Crop Doctor | Arena Mode</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+        /* --- GLOBAL LAYOUT --- */
+        body { font-family: 'Inter', sans-serif; display: flex; height: 100vh; margin: 0; background-color: #f0f4f8; color: #1e293b; overflow: hidden; justify-content: center; align-items: center; }
+
+        /* --- AUTHENTICATION SCREEN --- */
+        #auth-screen {
+            width: 400px; max-width: 90%; background: white; padding: 40px; border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(46, 125, 50, 0.15); display: flex; flex-direction: column; text-align: center;
+        }
+        .auth-logo { font-size: 3rem; margin-bottom: 10px; }
+        #auth-screen h2 { margin-top: 0; color: #1b5e20; font-size: 1.5rem; margin-bottom: 5px; }
+        #auth-screen p { color: #64748b; font-size: 0.9rem; margin-bottom: 25px; }
+        
+        .auth-form { display: flex; flex-direction: column; gap: 15px; }
+        .auth-form input { padding: 12px 15px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; outline: none; transition: border 0.2s; }
+        .auth-form input:focus { border-color: #4caf50; }
+        
+        .auth-btn { background: #4caf50; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .auth-btn:hover { background: #388e3c; }
+        
+        .auth-toggle { margin-top: 20px; font-size: 0.9rem; color: #64748b; }
+        .auth-toggle span { color: #4caf50; font-weight: 600; cursor: pointer; }
+        .auth-toggle span:hover { text-decoration: underline; }
+
+        .error-msg { color: #d32f2f; font-size: 0.85rem; margin-top: -10px; display: none; text-align: left; }
+
+        /* --- DASHBOARD LAYOUT (Hidden Initially) --- */
+        #app-container { 
+            width: 100%; height: 100%; display: none; /* HIDDEN UNTIL LOGGED IN */
+            flex-direction: row; background: white; 
+        }
+
+        /* --- SIDEBAR NAVIGATION --- */
+        #sidebar { width: 260px; background-color: #1b5e20; color: white; display: flex; flex-direction: column; box-shadow: 2px 0 10px rgba(0,0,0,0.1); z-index: 10; }
+        .sidebar-header { padding: 20px; font-size: 1.2rem; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+        .nav-links { list-style: none; padding: 10px 0; margin: 0; flex-grow: 1; }
+        .nav-item { padding: 12px 20px; margin: 4px 10px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 12px; transition: background 0.2s; font-size: 0.95rem; }
+        .nav-item:hover { background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: #2e7d32; font-weight: 500; }
+        .nav-icon { font-size: 1.2rem; }
+        .sidebar-footer { padding: 15px 20px; font-size: 0.8rem; color: #a5d6a7; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 10px; }
+        .logout-text { color: #ff8a80; cursor: pointer; font-weight: 600; }
+        .logout-text:hover { text-decoration: underline; }
+
+        /* --- MAIN CHAT AREA --- */
+        #main-content { flex-grow: 1; display: flex; flex-direction: column; background-color: #f8fafc; position: relative; }
+        #chat-header { padding: 15px 25px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: white; }
+        #provider-badge { background: #e8f5e9; color: #2e7d32; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+
+        #chat-history { flex-grow: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message { padding: 12px 18px; border-radius: 16px; max-width: 75%; line-height: 1.5; font-size: 0.95rem; animation: fadeIn 0.3s ease; }
+        .message p { margin: 0 0 8px 0; } .message p:last-child { margin: 0; }
+        .message ul, .message ol { margin: 8px 0; padding-left: 20px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .user-message { background-color: #4caf50; color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+        .bot-message { background-color: white; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid #e2e8f0; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        /* Model name headers */
+        .model-label { font-size: 0.8rem; font-weight: 600; color: #4caf50; text-transform: uppercase; margin-bottom: 6px; display: block; border-bottom: 1px solid #e8f5e9; padding-bottom: 4px;}
+        
+        #input-area { display: flex; padding: 20px 25px; background: white; border-top: 1px solid #e2e8f0; align-items: center; gap: 15px; }
+        #user-input { flex-grow: 1; padding: 14px 20px; border: 1px solid #cbd5e1; border-radius: 24px; outline: none; font-family: inherit; font-size: 1rem; transition: border 0.2s; }
+        #user-input:focus { border-color: #4caf50; }
+        #send-btn { background-color: #4caf50; color: white; border: none; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; display: flex; justify-content: center; align-items: center; transition: 0.2s; }
+        #send-btn:hover { background-color: #388e3c; }
+        #send-btn:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+
+        .typing-indicator { display: none; align-self: flex-start; background-color: white; padding: 12px 18px; border-radius: 20px; border-bottom-left-radius: 4px; border: 1px solid #e2e8f0; align-items: center; gap: 5px; }
+        .dot { width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; } .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* --- API KEY SETTINGS MODAL --- */
+        #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .modal-box { background: white; padding: 30px; border-radius: 12px; width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: scaleUp 0.3s ease; }
+        @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-box h2 { margin-top: 0; color: #1e293b; font-size: 1.3rem; }
+        .modal-box p { font-size: 0.9rem; color: #64748b; line-height: 1.4; }
+        
+        .key-input-group { margin-top: 15px; }
+        .key-input-group label { font-size: 0.85rem; font-weight: 600; color: #1b5e20; display: block; margin-bottom: 5px; }
+        .key-input-group input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; outline: none; }
+        .key-input-group input:focus { border-color: #4caf50; }
+        
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .btn-cancel { background: transparent; color: #64748b; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-save { background: #4caf50; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .btn-save:hover { background: #388e3c; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+
+<div id="auth-screen">
+    <div class="auth-logo">🌱</div>
+    <h2 id="auth-title">Welcome Back</h2>
+    <p id="auth-subtitle">Log in to access your Crop Doctor dashboard.</p>
+    
+    <div class="auth-form">
+        <div id="auth-error" class="error-msg">Incorrect username or password.</div>
+        <input type="text" id="auth-username" placeholder="Username" autocomplete="off">
+        <input type="password" id="auth-password" placeholder="Password">
+        <button class="auth-btn" id="auth-submit-btn" onclick="handleAuth()">Log In</button>
+    </div>
+
+    <div class="auth-toggle" id="auth-toggle-text">
+        Don't have an account? <span onclick="toggleAuthMode()">Create one</span>
+    </div>
+</div>
+
+<div id="app-container">
+    <nav id="sidebar">
+        <div class="sidebar-header"><span class="nav-icon">🌱</span> Crop Doctor</div>
+        <ul class="nav-links">
+            <li class="nav-item active"><span class="nav-icon">💬</span> New Chat</li>
+            <li class="nav-item" onclick="openSettingsModal()"><span class="nav-icon">🔑</span> API Settings</li>
+            <li class="nav-item" onclick="clearChat()"><span class="nav-icon">🗑️</span> Clear History</li>
+        </ul>
+        <div class="sidebar-footer">
+            <span id="user-greeting" style="color: white; font-weight: 600;">User</span>
+            <span>Status: <span id="sidebar-status">No API Key</span></span>
+            <span class="logout-text" onclick="logout()">Logout</span>
+        </div>
+    </nav>
+
+    <main id="main-content">
+        <div id="chat-header">
+            <h3 style="margin: 0; color: #1e293b;">Multi-Model Diagnostic Arena</h3>
+            <span id="provider-badge">Requires Setup</span>
+        </div>
+
+        <div id="chat-history">
+            <div class="message bot-message" id="welcome-msg">Hello! Please click "🔑 API Settings" in the sidebar to configure your AI providers. Enter keys for all the models you want to compare!</div>
+            <div class="typing-indicator" id="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </div>
+        
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="Type your crop symptoms here..." onkeypress="handleKeyPress(event)">
+            <button id="send-btn" onclick="sendMessage()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </main>
+</div>
+
+<div id="modal-overlay">
+    <div class="modal-box">
+        <h2>Model Arena Setup</h2>
+        <p>Enter the keys for the AIs you want to use. You can enter just one, or enter all three to get multiple diagnoses at once!</p>
+        
+        <div class="key-input-group">
+            <label>Google Key (Gemini 2.5 Flash)</label>
+            <input type="password" id="api-google" placeholder="AIzaSy...">
+        </div>
+        
+        <div class="key-input-group">
+            <label>GroqCloud Key (Llama 3.1 8B)</label>
+            <input type="password" id="api-groq" placeholder="gsk_...">
+        </div>
+
+        <div class="key-input-group">
+            <label>OpenRouter Key (Auto-Route)</label>
+            <input type="password" id="api-openrouter" placeholder="sk-or-v1-...">
+        </div>
+
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeSettingsModal()">Cancel</button>
+            <button class="btn-save" onclick="saveSettings()">Save Configuration</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- STATE VARIABLES ---
+    let isRegisterMode = false;
+    let currentUser = null;
+    
+    // Updated to include openrouter instead of openai
+    let activeKeys = {
+        google: "",
+        groq: "",
+        openrouter: ""
+    };
+
+    // --- ON PAGE LOAD ---
+    window.onload = function() {
+        const loggedInUser = sessionStorage.getItem('cropDoctor_activeUser');
+        if (loggedInUser) {
+            currentUser = loggedInUser;
+            showDashboard();
+        } else {
+            document.getElementById('auth-screen').style.display = 'flex';
+            document.getElementById('app-container').style.display = 'none';
+        }
+    }
+
+    // --- AUTHENTICATION LOGIC ---
+    function toggleAuthMode() {
+        isRegisterMode = !isRegisterMode;
+        const title = document.getElementById('auth-title');
+        const subtitle = document.getElementById('auth-subtitle');
+        const btn = document.getElementById('auth-submit-btn');
+        const toggleText = document.getElementById('auth-toggle-text');
+        const errorMsg = document.getElementById('auth-error');
+
+        errorMsg.style.display = 'none'; 
+        document.getElementById('auth-username').value = "";
+        document.getElementById('auth-password').value = "";
+
+        if (isRegisterMode) {
+            title.innerText = "Create an Account";
+            subtitle.innerText = "Register to save your API keys and history.";
+            btn.innerText = "Sign Up";
+            toggleText.innerHTML = `Already have an account? <span onclick="toggleAuthMode()">Log in</span>`;
+        } else {
+            title.innerText = "Welcome Back";
+            subtitle.innerText = "Log in to access your Crop Doctor dashboard.";
+            btn.innerText = "Log In";
+            toggleText.innerHTML = `Don't have an account? <span onclick="toggleAuthMode()">Create one</span>`;
+        }
+    }
+
+    function handleAuth() {
+        const user = document.getElementById('auth-username').value.trim();
+        const pass = document.getElementById('auth-password').value.trim();
+        const errorMsg = document.getElementById('auth-error');
+
+        if (!user || !pass) {
+            errorMsg.innerText = "Please enter both username and password.";
+            errorMsg.style.display = 'block';
+            return;
+        }
+
+        let usersDB = JSON.parse(localStorage.getItem('cropDoctor_usersDB')) || {};
+
+        if (isRegisterMode) {
+            if (usersDB[user]) {
+                errorMsg.innerText = "Username already exists. Please choose another or log in.";
+                errorMsg.style.display = 'block';
+            } else {
+                usersDB[user] = { password: pass };
+                localStorage.setItem('cropDoctor_usersDB', JSON.stringify(usersDB));
+                alert("Account created successfully! Logging you in...");
+                loginUser(user);
+            }
+        } else {
+            if (usersDB[user] && usersDB[user].password === pass) {
+                loginUser(user);
+            } else {
+                errorMsg.innerText = "Incorrect username or password.";
+                errorMsg.style.display = 'block';
+            }
+        }
+    }
+
+    function loginUser(username) {
+        currentUser = username;
+        sessionStorage.setItem('cropDoctor_activeUser', username);
+        showDashboard();
+    }
+
+    function logout() {
+        currentUser = null;
+        sessionStorage.removeItem('cropDoctor_activeUser');
+        activeKeys = { google: "", groq: "", openrouter: "" }; 
+        
+        document.getElementById('auth-username').value = "";
+        document.getElementById('auth-password').value = "";
+        document.getElementById('auth-error').style.display = 'none';
+        
+        document.getElementById('app-container').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+        
+        if(isRegisterMode) toggleAuthMode();
+    }
+
+    // --- DASHBOARD INITIALIZATION ---
+    function showDashboard() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('app-container').style.display = 'flex';
+        document.getElementById('user-greeting').innerText = `Welcome, ${currentUser}!`;
+
+        const savedKeysRaw = localStorage.getItem(`api_keys_${currentUser}`);
+
+        if (savedKeysRaw) {
+            activeKeys = JSON.parse(savedKeysRaw);
+            
+            document.getElementById('api-google').value = activeKeys.google || "";
+            document.getElementById('api-groq').value = activeKeys.groq || "";
+            document.getElementById('api-openrouter').value = activeKeys.openrouter || "";
+            
+            updateStatusUI();
+            document.getElementById('welcome-msg').innerText = "Welcome back! I loaded your saved keys. What crop symptoms are we looking at today?";
+        } else {
+            activeKeys = { google: "", groq: "", openrouter: "" };
+            document.getElementById('api-google').value = "";
+            document.getElementById('api-groq').value = "";
+            document.getElementById('api-openrouter').value = "";
+            
+            updateStatusUI();
+            document.getElementById('welcome-msg').innerText = "Hello! Please click '🔑 API Settings' in the sidebar to configure your AI providers before we begin.";
+            openSettingsModal();
+        }
+    }
+
+    // --- MODAL & SETTINGS LOGIC ---
+    function updateStatusUI() {
+        let activeCount = 0;
+        if(activeKeys.google) activeCount++;
+        if(activeKeys.groq) activeCount++;
+        if(activeKeys.openrouter) activeCount++;
+
+        if(activeCount === 0) {
+            document.getElementById('sidebar-status').innerText = `No Keys Saved`;
+            document.getElementById('provider-badge').innerText = `Requires Setup`;
+        } else {
+            document.getElementById('sidebar-status').innerText = `${activeCount} Models Ready`;
+            document.getElementById('provider-badge').innerText = `Arena Mode: ${activeCount} Active`;
+        }
+    }
+
+    function openSettingsModal() { document.getElementById('modal-overlay').style.display = 'flex'; }
+    function closeSettingsModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+    function saveSettings() {
+        activeKeys.google = document.getElementById('api-google').value.trim();
+        activeKeys.groq = document.getElementById('api-groq').value.trim();
+        activeKeys.openrouter = document.getElementById('api-openrouter').value.trim();
+        
+        localStorage.setItem(`api_keys_${currentUser}`, JSON.stringify(activeKeys));
+
+        updateStatusUI();
+        closeSettingsModal();
+        
+        if (!activeKeys.google && !activeKeys.groq && !activeKeys.openrouter) {
+            alert("You didn't save any keys! You need at least one to chat.");
+        } else {
+            const chatHistory = document.getElementById('chat-history');
+            if (chatHistory.children.length <= 2) {
+                clearChat();
+                appendMessage(`Arena configured! You will receive answers from all active models simultaneously. How can I help?`, 'bot-message');
+            }
+        }
+    }
+
+    // --- ARENA CHAT LOGIC ---
+    async function sendMessage() {
+        const inputField = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const messageText = inputField.value.trim();
+        
+        if (!activeKeys.google && !activeKeys.groq && !activeKeys.openrouter) { 
+            alert("Please configure at least one API Key first.");
+            openSettingsModal(); return; 
+        }
+        if (!messageText) return;
+
+        appendMessage(messageText, 'user-message');
+        inputField.value = '';
+
+        inputField.disabled = true; sendBtn.disabled = true;
+        typingIndicator.style.display = 'flex'; scrollToBottom();
+
+        const systemPrompt = "You are the 'Smart Crop Doctor', an expert agricultural AI. Provide helpful, structured advice on plant health and diseases.";
+
+        let pendingRequests = [];
+
+        // 1. Queue Google Request
+        if (activeKeys.google) {
+            const fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system_instruction: { parts: [{ text: systemPrompt }] }, contents: [{ parts: [{ text: messageText }] }] }) };
+            const req = fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeKeys.google}`, fetchOptions)
+                .then(res => res.json())
+                .then(data => data.candidates[0].content.parts[0].text)
+                .catch(err => `Error with Google: Check your API key.`);
+            
+            pendingRequests.push({ provider: 'Google (Gemini 2.5)', promise: req });
+        }
+
+        // 2. Queue Groq Request
+        if (activeKeys.groq) {
+            const fetchOptions = { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${activeKeys.groq}` }, body: JSON.stringify({ model: "llama-3.1-8b-instant", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: messageText }] }) };
+            const req = fetch('https://api.groq.com/openai/v1/chat/completions', fetchOptions)
+                .then(res => res.json())
+                .then(data => data.choices[0].message.content)
+                .catch(err => `Error with Groq: Check your API key.`);
+            
+            pendingRequests.push({ provider: 'GroqCloud (Llama 3.1)', promise: req });
+        }
+
+        // 3. Queue OpenRouter Request
+        if (activeKeys.openrouter) {
+            const fetchOptions = { 
+                method: 'POST', 
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'Authorization': `Bearer ${activeKeys.openrouter}`,
+                    'HTTP-Referer': 'http://localhost', 
+                    'X-Title': 'Smart Crop Doctor'
+                }, 
+                body: JSON.stringify({ 
+                    model: "openrouter/auto", // OpenRouter's automatic model selection
+                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: messageText }] 
+                }) 
+            };
+            const req = fetch('https://openrouter.ai/api/v1/chat/completions', fetchOptions)
+                .then(res => res.json())
+                .then(data => data.choices[0].message.content)
+                .catch(err => `Error with OpenRouter: Check your API key.`);
+            
+            pendingRequests.push({ provider: 'OpenRouter (Auto-Route)', promise: req });
+        }
+
+        // --- EXECUTE ALL REQUESTS AT THE SAME TIME ---
+        try {
+            const results = await Promise.allSettled(pendingRequests.map(p => p.promise));
+            typingIndicator.style.display = 'none';
+
+            results.forEach((result, index) => {
+                const providerName = pendingRequests[index].provider;
+                let replyText = "";
+
+                if (result.status === 'fulfilled' && result.value) {
+                    replyText = result.value;
+                } else {
+                    replyText = `*Failed to get a response from ${providerName}.*`;
+                }
+
+                appendModelMessage(providerName, replyText);
+            });
+
+        } finally {
+            inputField.disabled = false; sendBtn.disabled = false; inputField.focus();
+        }
+    }
+
+    function clearChat() {
+        const chatHistory = document.getElementById('chat-history');
+        const messages = chatHistory.querySelectorAll('.message');
+        messages.forEach(msg => msg.remove());
+    }
+
+    function appendMessage(text, className) {
+        const chatHistory = document.getElementById('chat-history');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${className}`;
+        messageDiv.innerText = text; 
+        chatHistory.insertBefore(messageDiv, typingIndicator);
+        scrollToBottom();
+    }
+
+    function appendModelMessage(providerName, text) {
+        const chatHistory = document.getElementById('chat-history');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message bot-message`;
+        
+        messageDiv.innerHTML = `<span class="model-label">${providerName}</span>` + marked.parse(text);
+        
+        chatHistory.insertBefore(messageDiv, typingIndicator);
+        scrollToBottom();
+    }
+
+    function scrollToBottom() { document.getElementById('chat-history').scrollTop = document.getElementById('chat-history').scrollHeight; }
+    function handleKeyPress(event) { if (event.key === 'Enter' && !document.getElementById('user-input').disabled) sendMessage(); }
+</script>
+</body>
+</html>
